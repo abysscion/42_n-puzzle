@@ -15,7 +15,7 @@ This project is about making a program able to solve different N-puzzle of diffe
 
 ## Usage
 `
-./NPuzzleSolver [options] "equation"
+N-Puzzle [options] <path/to/file/puzzle.txt>
 `
 
 **options:**
