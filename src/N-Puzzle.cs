@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 
 namespace N_Puzzle
@@ -18,7 +19,8 @@ namespace N_Puzzle
             }
             catch (Exception e)
             {
-                Console.WriteLine("[Error] " + (e.Message.Length != 0 ? e.Message : e.ToString()));
+                // Console.WriteLine("[Error] " + (e.Message.Length != 0 ? e.Message : e.ToString()));
+                Console.WriteLine(e.StackTrace);
             }
         }
 
@@ -26,6 +28,15 @@ namespace N_Puzzle
         {
             OptionsParser.Parse(args);
             var solver = new Solver(args[^1]);
+
+            // var puzzle = new List<int>();
+            // var solved = SolvedStates.GetSolvedStates_Snail(4);
+            //
+            // for (var i = 0; i < 16; i++)
+            //     puzzle.Add(i);
+            // Utilities.ShuffleList(puzzle);
+            //
+            // Console.WriteLine(Heuristics.GetLinearConflictsScore(puzzle, solved, 3));
         }
 
         private static void PrintUsage()
