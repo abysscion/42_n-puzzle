@@ -19,6 +19,7 @@ namespace N_Puzzle
             }
             catch (Exception e)
             {
+                //TODO: uncomment before release 
                 // Console.WriteLine("[Error] " + (e.Message.Length != 0 ? e.Message : e.ToString()));
                 Console.WriteLine(e.StackTrace);
             }
@@ -28,13 +29,11 @@ namespace N_Puzzle
         {
             OptionsParser.Parse(args);
             var solver = new Solver(args[^1]);
-
             const int n = 3;
-            var solved = SolvedStates.GetSolvedStates_ZeroFirst(n);
-
+            var solved = SolvedStates.GetSolvedState(SolvedStateType.ZeroFirst, n);
             var puzzle = new List<int> {4,2,5,1,0,6,3,8,7};
+            solver.SolvePuzzle(SolvedStateType.ZeroFirst, HeuristicType.Manhattan);
             
-            Console.WriteLine(Heuristics.GetLinearConflictsScore(puzzle, solved, n));
         }
 
         private static void PrintUsage()

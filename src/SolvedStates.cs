@@ -1,10 +1,44 @@
+using System;
 using System.Collections.Generic;
 
 namespace N_Puzzle
 {
     public static class SolvedStates
     {
-        public static List<int> GetSolvedStates_Snail(int n)
+        private static List<int> _generatedZeroFirst;
+        private static List<int> _generatedZeroLast;
+        private static List<int> _generatedSnail;
+        private static int _lastUsedN = -1;
+
+        public static List<int> GetSolvedState(SolvedStateType solvedStateType, int n)
+        {
+            if (n < 0)
+                return null;
+
+            if (n != _lastUsedN)
+                _generatedSnail = _generatedZeroFirst = _generatedZeroLast = null;
+            _lastUsedN = n;
+
+            switch (solvedStateType)
+            {
+                case SolvedStateType.ZeroFirst:
+                    if (_generatedZeroFirst == null)
+                        _generatedZeroFirst = GetSolvedStates_ZeroFirst(n);
+                    return _generatedZeroFirst;
+                case SolvedStateType.ZeroLast:
+                    if (_generatedZeroLast == null)
+                        _generatedZeroLast = GetSolvedStates_ZeroLast(n);
+                    return _generatedZeroLast;
+                case SolvedStateType.Snail:
+                    if (_generatedSnail == null)
+                        _generatedSnail = GetSolvedStates_Snail(n);
+                    return _generatedSnail;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(solvedStateType), solvedStateType, null);
+            }
+        }
+
+        private static List<int> GetSolvedStates_Snail(int n)
         {
             var matrix = new int[n, n];
             for (int step = 0, a = 0; step < n / 2; step++)
@@ -37,7 +71,7 @@ namespace N_Puzzle
             return res;
         }
 
-        public static List<int> GetSolvedStates_ZeroFirst(int n)
+        private static List<int> GetSolvedStates_ZeroFirst(int n)
         {
             var res = new List<int>();
 
@@ -46,8 +80,8 @@ namespace N_Puzzle
 
             return res;
         }
-        
-        public static List<int> GetSolvedStates_ZeroLast(int n)
+
+        private static List<int> GetSolvedStates_ZeroLast(int n)
         {
             var res = new List<int>();
 
