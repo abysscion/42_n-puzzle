@@ -29,14 +29,12 @@ namespace N_Puzzle
             OptionsParser.Parse(args);
             var solver = new Solver(args[^1]);
 
-            // var puzzle = new List<int>();
-            // var solved = SolvedStates.GetSolvedStates_Snail(4);
-            //
-            // for (var i = 0; i < 16; i++)
-            //     puzzle.Add(i);
-            // Utilities.ShuffleList(puzzle);
-            //
-            // Console.WriteLine(Heuristics.GetLinearConflictsScore(puzzle, solved, 3));
+            const int n = 3;
+            var solved = SolvedStates.GetSolvedStates_ZeroFirst(n);
+
+            var puzzle = new List<int> {4,2,5,1,0,6,3,8,7};
+            
+            Console.WriteLine(Heuristics.GetLinearConflictsScore(puzzle, solved, n));
         }
 
         private static void PrintUsage()

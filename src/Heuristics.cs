@@ -104,7 +104,7 @@ namespace N_Puzzle
             }
 
             // checking left <---
-            for (var i = tileIndex - 1; i % n >= 0; i--)
+            for (var i = tileIndex - 1; i % n < n - 1 && i % n >= 0; i--)
             {
                 if (puzzle[tileIndex] != solvedPuzzle[i])
                     continue;
