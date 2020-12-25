@@ -81,86 +81,68 @@ namespace N_Puzzle
             {
                 _tmpMaxStates = 0;
 
-                var foundGoalState = SearchHelper(parent, gScore, threshold, out var minF, ref finalNode);
+                var tmpF = SearchHelper(parent, gScore, threshold, ref finalNode);
 
-                threshold = minF;
                 if (_tmpMaxStates > _info.StatesInMemoryAtTheSameTime)
                     _info.StatesInMemoryAtTheSameTime = _tmpMaxStates;
-                if (foundGoalState)
+                if (finalNode != null)
                     return finalNode;
-                if (threshold > 300 || _timeLimit > 0 && _sw.ElapsedMilliseconds > _timeLimit)
+                if (tmpF > 666) //too deep search
                     return null;
+                if (tmpF == -1) //time limit
+                    return null;
+                
+                threshold = tmpF;
             }
         }
 
-        //helper method for IDA star search. seeks every node, which 
-        private bool SearchHelper(PuzzleNode node, int gScore, int threshold, out int minF, ref PuzzleNode finalNode)
+        //helper method for IDA star search. returns minimum f_score encountered, such as f_score > threshold 
+        private int SearchHelper(PuzzleNode node, int gScore, int threshold, ref PuzzleNode finalNode)
         {
             var hScore = Heuristics.GetScore(node.State, _goalState, _heuristicType, _puzzleSize);
             var fScore = gScore + hScore; 
             var nextThreshold = int.MaxValue;
-
-            minF = fScore;
-
-            //cases where we want to immediately stop search 
+            
             if (_timeLimit > 0 && _sw.ElapsedMilliseconds > _timeLimit)
-                return false;
+                return -1;
+            //encountered greater f score => restarting search with new threshold
             if (fScore > threshold)
-                return false;
-            if (node.State.SequenceEqual(_goalState))
+                return fScore;
+            //returning of fscore is not necessary if we found finalNode, btw
+            if (finalNode == null)
             {
-                _info.IsSolved = true;
-                return true;
+                if (node.State.SequenceEqual(_goalState))
+                {
+                    finalNode = node;
+                    _info.TurnsCount = gScore + 1;
+                    return int.MaxValue;
+                }
             }
+            else
+                return int.MaxValue;
 
             //create new candidates aka possible states after empty tile move
             var candidates = GetNewCandidates(node, gScore);
 
-            //collect info for the future
+            //info managing
             _tmpMaxStates += candidates.Count;
-            
-            //print ongoing info if needed
-            if (OptionsParser.PrintSolvingInfo)
-            {
-                if (_sw.ElapsedMilliseconds > _lastInfoPrintTime + InfoPrintDelay)
-                {
-                    _lastInfoPrintTime = _sw.ElapsedMilliseconds;
-                    Console.Clear();
-                    Console.WriteLine("*SOLVING IS GOING ON*");
-                    Console.WriteLine($"Current depth: {gScore}");
-                    Console.WriteLine($"Heuristic score for last node: {hScore}");
-                    Console.WriteLine($"Total nodes traversed: {_info.StatesEverSelected}");
-                    Console.WriteLine($"Current nodes in memory: {_tmpMaxStates}");
-                    Console.WriteLine($"Maximum nodes in memory after reaching minimum f: {_info.StatesInMemoryAtTheSameTime}");
-                    Console.WriteLine($"Time elapsed: {_sw.Elapsed.Minutes}:{_sw.Elapsed.Seconds}:{_sw.Elapsed.Milliseconds}");
-                }
-            }
+            PrintInfoIfNeeded(gScore, hScore);
 
             //run search for every candidate
             while (candidates.Count != 0)
             {
                 _info.StatesEverSelected++;
-                // going down to the tree, to the BEST candidate found by f score of every moved state
                 var bestCandidate = candidates.Dequeue();
-                var foundGoalState = SearchHelper(bestCandidate, gScore + 1, threshold, out minF, ref finalNode);
-
-                if (foundGoalState)
-                {
-                    if (finalNode == null)
-                    {
-                        _info.TurnsCount = gScore + 1;
-                        finalNode = bestCandidate;
-                    }
-
-                    return true;
-                }
-
+                //going down to the tree, to the BEST candidate found by f score of every moved state
+                var tmpF = SearchHelper(bestCandidate, gScore + 1, threshold, ref finalNode);
+                if (finalNode != null)
+                    break;
                 // save new minimum f_score encountered, such as f_score > threshold 
-                if (minF < nextThreshold)
-                    nextThreshold = minF;
+                if (tmpF < nextThreshold)
+                    nextThreshold = tmpF;
             }
 
-            return false;
+            return nextThreshold;
         }
 
         //returns NEWLY created queue of NEWLY created nodes, made by possible moves from position of empty tile
@@ -188,6 +170,25 @@ namespace N_Puzzle
             return candidates;
         }
 
+        private void PrintInfoIfNeeded(int gScore, int hScore)
+        {
+            //print ongoing info if needed (eats performance)
+            if (!OptionsParser.PrintSolvingInfo)
+                return;
+            if (_sw.ElapsedMilliseconds <= _lastInfoPrintTime + InfoPrintDelay)
+                return;
+            
+            _lastInfoPrintTime = _sw.ElapsedMilliseconds;
+            Console.Clear();
+            Console.WriteLine("*SOLVING IS GOING ON*");
+            Console.WriteLine($"Current depth: {gScore}");
+            Console.WriteLine($"Heuristic score for last node: {hScore}");
+            Console.WriteLine($"Total nodes traversed: {_info.StatesEverSelected}");
+            Console.WriteLine($"Current nodes in memory: {_tmpMaxStates}");
+            Console.WriteLine($"Maximum nodes in memory after reaching minimum f: {_info.StatesInMemoryAtTheSameTime}");
+            Console.WriteLine($"Time elapsed: {_sw.Elapsed.Minutes}:{_sw.Elapsed.Seconds}:{_sw.Elapsed.Milliseconds}");
+        }
+        
         private void ParseFileContent(List<string> fileContent)
         {
             if (!Regex.IsMatch(fileContent[0], @"^\d$"))
