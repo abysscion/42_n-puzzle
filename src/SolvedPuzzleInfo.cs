@@ -1,3 +1,5 @@
+using System.Diagnostics;
+
 namespace N_Puzzle
 {
     public struct SolvedPuzzleInfo
@@ -5,6 +7,8 @@ namespace N_Puzzle
         public HeuristicType Heuristic;
         public PuzzleNode SolvedNode;
         public PuzzleNode RootNode;
+        public Stopwatch TimeThing;
+        public bool IsSolved;
         public int StatesInMemoryAtTheSameTime;
         public int StatesEverSelected;
         public int TurnsCount;

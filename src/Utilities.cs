@@ -22,6 +22,34 @@ namespace N_Puzzle
             }
         }
         
+        public static bool IsStateSolvable(List<int> state, int n, SolvedStateType goalType)
+        {
+            if (goalType == SolvedStateType.Snail)
+                return IsSnailStateSolvable(state, n);
+            
+            var inversionsCount = 0;
+            var zeroPos = state.IndexOf(0);
+
+            for (var i = 0; i < state.Count - 1; i++)
+            {
+                if (state[i] == 0)
+                    continue;
+                for (var j = i + 1; j < state.Count; j++)
+                {
+                    if (state[i] == 0 || state[j] == 0)
+                        continue;
+                    if (state[i] > state[j])
+                        inversionsCount++;
+                }
+            }
+
+            if (n % 2 != 0)
+                return inversionsCount % 2 == 0;
+            if (zeroPos % 2 != 0)
+                return inversionsCount % 2 == 0;
+            return inversionsCount % 2 != 0;
+        }
+        
         public static void PrintStateAsTable(List<int> state, int size)
         {
             for (var i = 0; i < size; i++)
@@ -90,6 +118,41 @@ namespace N_Puzzle
                     writer.Close();
                 }
             }
+        }
+
+        private static bool IsSnailStateSolvable(List<int> state, int n)
+        {
+            var stateInversions = 0;
+            var goalInversions = 0;
+            var goalState = SolvedStates.GetSolvedState(SolvedStateType.Snail, n);
+
+            for (var i = 0; i < state.Count - 1; i++)
+            {
+                if (state[i] == 0)
+                    continue;
+                for (var j = i + 1; j < state.Count; j++)
+                {
+                    if (state[j] == 0)
+                        continue;
+                    if (state[i] > state[j])
+                        stateInversions++;
+                }
+            }
+
+            for (var i = 0; i < state.Count - 1; i++)
+            {
+                if (state[i] == 0)
+                    continue;
+                for (var j = i + 1; j < state.Count; j++)
+                {
+                    if (goalState[j] == 0)
+                        continue;
+                    if (goalState[i] > goalState[j])
+                        goalInversions++;
+                }
+            }
+
+            return stateInversions % 2 == goalInversions % 2;
         }
     }
 }

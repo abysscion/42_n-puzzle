@@ -58,7 +58,7 @@ namespace N_Puzzle
             {
                 thread.Join();
                 var export = "";
-                export += $"{puzzleName} | {_heuristicType} | {_solvedStateType} | ";
+                export += $"{puzzleName}\t|\t{_heuristicType}\t|\t{_solvedStateType}\t|\t";
                 export += _solved ? $"Time:{sw.ElapsedMilliseconds}ms" : (_message == "" ? "TIME LIMIT" : _message);
 
                 writer.WriteLine(export);

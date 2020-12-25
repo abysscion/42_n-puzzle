@@ -8,7 +8,6 @@ namespace N_Puzzle
         private static void Main(string[] args)
         {
             // PuzzleTester.TestFiles("C:\\Born2Code\\C#\\42_n-puzzle\\puzzles\\");
-
             try
             {
                 CultureInfo.CurrentCulture = new CultureInfo("en-US", false);
@@ -21,7 +20,7 @@ namespace N_Puzzle
             catch (Exception e)
             {
                 Console.WriteLine("[Error] " + (e.Message.Length != 0 ? e.Message : e.ToString()));
-                //TODO: delete before release 
+                //TODO: remove
                 Console.WriteLine(e.StackTrace);
             }
         }
@@ -40,8 +39,16 @@ namespace N_Puzzle
             Console.WriteLine($"Selected heuristic: {info.Heuristic}");
             Console.WriteLine($"Total ever states selected (complexity in time): {info.StatesEverSelected}");
             Console.WriteLine($"Maximum states in memory (complexity in size): {info.StatesInMemoryAtTheSameTime}");
-            Console.WriteLine($"Turns to solve puzzle: {info.TurnsCount}");
+            if (info.SolvedNode != null)
+                Console.WriteLine($"Turns to solve puzzle: {info.TurnsCount}");
+            Console.WriteLine($"Time elapsed: {info.TimeThing.ElapsedMilliseconds}ms");
             Console.WriteLine();
+
+            if (info.SolvedNode == null)
+            {
+                Console.WriteLine("Status: " + (info.IsSolved ? "solved" : "not solved"));
+                return;
+            }
 
             if (OptionsParser.TableStepFlag)
             {
@@ -58,15 +65,16 @@ namespace N_Puzzle
                     Console.WriteLine(state);
             }
         }
-        
+
         private static void PrintUsage()
         {
-            Console.WriteLine("N-Puzzle [options] <path/to/file/puzzle.txt>");
+            Console.WriteLine("N-Puzzle [options] <path/to/file/puzzle.txt>\n\t(by default it uses Manhattan heuristic and looks for Zerolast solution)");
             Console.WriteLine("options:\n" +
-                              "\t-heuristic:<name>\t - use specific heuristic. Currently available <name>: \"Manhattan\", \"LinearConflicts\", \"Hamming\"." +
-                              "\t-goal:<name>\t - use specific goal state. Currently available <name>: \"ZeroLast\", \"ZeroFirst\", \"Snail\"." +
-                              "\t-ts\t\t- print solving steps as tables\n" +
-                              "\t-r\t\t- option 2");
+                              "\t-heuristic:<name>\t- use specific heuristic. Currently available <name>: \"Manhattan\", \"LinearConflicts\", \"Hamming\".\n" +
+                              "\t-goal:<name>\t\t- use specific goal state. Currently available <name>: \"ZeroLast\", \"ZeroFirst\", \"Snail\".\n" +
+                              "\t-ts\t\t\t- print solving steps as tables.\n" +
+                              "\t-v\t\t\t- print info about solving as it goes.\n" +
+                              "\t-t:<n>\t\t\t- time limit, where <n> is a number of milliseconds in range [0, max int). If n is zero, no limit will be applied.");
         }
     }
 }

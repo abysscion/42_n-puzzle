@@ -6,11 +6,13 @@ namespace N_Puzzle
     {
         private static bool _heuristicFlagSet;
         private static bool _goalFlagSet;
-        
+        private static bool _tFlagSet;
+
         public static SolvedStateType GoalFlag { get; private set; }
         public static HeuristicType HeuristicFlag { get; private set; }
+        public static bool PrintSolvingInfo { get; private set; }
         public static bool TableStepFlag { get; private set; }
-        public static bool FFlag { get; private set; }
+        public static int TimeLimitFlag { get; private set; } = 1000; //default time limit is 1sec
 
         public static void Parse(string[] opts)
         { 
@@ -22,7 +24,9 @@ namespace N_Puzzle
                     continue;
                 if (CheckForHeuristicFlag(opt))
                     continue;
-                
+                if (CheckForTimeLimitFlag(opt))
+                    continue;
+
                 switch (opt)
                 {
                     case "-ts":
@@ -30,15 +34,35 @@ namespace N_Puzzle
                             throw new Exception("-ts flag is already set.");
                         TableStepFlag = true;
                         break;
-                    case "-f":
-                        if (FFlag)
-                            throw new Exception("-f flag is already set.");
-                        FFlag = true;
+                    case "-v":
+                        if (PrintSolvingInfo)
+                            throw new Exception("-v flag is already set.");
+                        PrintSolvingInfo = true;
                         break;
                     default:
                         throw new Exception("unknown flag provided: " + opt);
                 }
             }
+        }
+
+        private static bool CheckForTimeLimitFlag(string opt)
+        {
+            if (!opt.StartsWith("-t:"))
+                return false;
+            
+            if (_tFlagSet)
+                throw new Exception("-t flag is already set.");
+            var timeStr = opt.Substring(3);
+            if (timeStr.Length < 1)
+                throw new Exception("no time provided.");
+            if (!int.TryParse(timeStr, out var time))
+                throw new Exception($"invalid number provided for -t flag: {time}.");
+            if (time < 0)
+                throw new Exception($"time for -t flag can't be negative: {time}.");
+
+            TimeLimitFlag = time;
+            _tFlagSet = true;
+            return true;
         }
 
         private static bool CheckForHeuristicFlag(string opt)
