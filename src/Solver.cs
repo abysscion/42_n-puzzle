@@ -10,78 +10,131 @@ namespace N_Puzzle
 {
     public class Solver
     {
-        private const long InfoPrintDelay = 500; //500ms
-        private readonly List<int> _initialState;
+        private const long InfoPrintDelay = 250; //250ms
         private readonly List<int> _moves;
         private SolvedPuzzleInfo _info;
         private HeuristicType _heuristicType;
+        private AlgorithmType _algorithmType;
         private Stopwatch _sw;
         private List<int> _goalState;
         private long _lastInfoPrintTime;
         private int _tmpMaxStates;
-        private int _puzzleSize;
         private int _timeLimit;
+        
+        public List<int> InitialState { get; }
+        public int PuzzleSize { get; private set; }
 
         public Solver(string file)
         {
             if (!File.Exists(file))
                 throw new Exception($"file {file} does not exist.");
 
-            _initialState = new List<int>();
+            InitialState = new List<int>();
             ParseFileContent(GetFileContentWithoutComments(file));
-            _moves = new List<int> {1, -1, _puzzleSize, -_puzzleSize};
+            _moves = new List<int> {1, -1, PuzzleSize, -PuzzleSize};
         }
 
-        public SolvedPuzzleInfo SolvePuzzle(SolvedStateType goalType, HeuristicType heuristicType)
+        public SolvedPuzzleInfo SolvePuzzle(GoalStateType goalType, HeuristicType heuristicType,
+                                            AlgorithmType algorithmType, int timeLimit = 10000)
         {
-            if (!Utilities.IsStateSolvable(_initialState, _puzzleSize, goalType))
+            if (!Utilities.IsStateSolvable(InitialState, PuzzleSize, goalType))
             {
                 var solvable = false;
-                var zeroIndex = _initialState.IndexOf(0);
-            
+                var zeroIndex = InitialState.IndexOf(0);
+
                 //Additional check for neighbour positions created via empty tile moves. For a strange cases.
                 foreach (var move in _moves)
                 {
-                    var neighbour = PuzzleNode.CreateMovedState(_initialState, move, zeroIndex, _puzzleSize);
+                    var neighbour = PuzzleNode.CreateMovedState(InitialState, move, zeroIndex, PuzzleSize);
                     if (neighbour == null)
                         continue;
-                    solvable = Utilities.IsStateSolvable(neighbour, _puzzleSize, goalType);
+                    solvable = Utilities.IsStateSolvable(neighbour, PuzzleSize, goalType);
                     if (solvable)
                         break;
                 }
-            
+
                 if (!solvable)
                     throw new Exception("given puzzle can't be solved to given goal state.");
             }
 
-            var rootNode = new PuzzleNode(null, _initialState, null);
-            _timeLimit = OptionsParser.TimeLimitFlag;
-            _goalState = SolvedStates.GetSolvedState(goalType, _puzzleSize);
+            _timeLimit = timeLimit;
+            _algorithmType = algorithmType;
+            _goalState = GoalStates.GetGoalState(goalType, PuzzleSize);
             _heuristicType = heuristicType;
             _lastInfoPrintTime = 0;
-            _info = new SolvedPuzzleInfo();
-            _info.Heuristic = _heuristicType;
-            _info.RootNode = rootNode;
-            _info.PuzzleSize = _puzzleSize;
+            var goalState = GoalStates.GetGoalState(goalType, PuzzleSize);
+            var initialHScore = Heuristics.GetScore(InitialState, goalState, heuristicType, PuzzleSize);
+            var rootNode = new PuzzleNode(null, InitialState, null, 0, initialHScore);
+            _info = new SolvedPuzzleInfo {Heuristic = _heuristicType, RootNode = rootNode, PuzzleSize = PuzzleSize};
             //============== search entry point =================
-            _info.SolvedNode = IDAStarSearch(rootNode, 0);
+            if (algorithmType == AlgorithmType.Astar)
+                _info.SolvedNode = AStarSearch(rootNode);
+            else if (algorithmType == AlgorithmType.IDAstar)
+                _info.SolvedNode = IDAStarSearch(rootNode);
+            else
+                throw new Exception("unknown algorithm type provided!");
             //===================================================
             _sw.Stop();
             _info.TimeThing = _sw;
             return _info;
         }
 
-        private PuzzleNode IDAStarSearch(PuzzleNode parent, int gScore)
+        private PuzzleNode AStarSearch(PuzzleNode parent)
         {
             _sw = Stopwatch.StartNew();
-            var threshold = Heuristics.GetScore(parent.State, _goalState, _heuristicType, _puzzleSize);
+            var fScore = Heuristics.GetScore(parent.State, _goalState, _heuristicType, PuzzleSize); //g = 0
+            var openSet = new SimplePriorityQueue<PuzzleNode>();
+            var closedSet = new List<PuzzleNode>();
+
+            openSet.Enqueue(parent, fScore);
+            while (openSet.Count != 0)
+            {
+                if (_timeLimit > 0 && _sw.ElapsedMilliseconds > _timeLimit)
+                    return null;
+                var currentNode = openSet.Dequeue();
+                if (currentNode.State.SequenceEqual(_goalState))
+                {
+                    _info.TurnsCount = currentNode.GScore;
+                    return currentNode;
+                }
+                
+                PrintInfoIfNeeded(currentNode.GScore, currentNode.HScore);
+
+                closedSet.Add(currentNode);
+                var candidates = GetNewCandidates(currentNode, currentNode.GScore + 1);
+                foreach (var candidate in candidates)
+                {
+                    if (!closedSet.Contains(candidate) && !openSet.Contains(candidate))
+                        openSet.Enqueue(candidate, candidate.FScore);
+                    else
+                    {
+                        if (candidate.FScore <= (currentNode.GScore + 1) + candidate.HScore)
+                            continue;
+                        if (!closedSet.Contains(candidate))
+                            continue;
+                        closedSet.Remove(candidate);
+                        openSet.Enqueue(candidate, candidate.FScore);
+                    }
+                }
+                if (_info.StatesInMemoryAtTheSameTime < openSet.Count + closedSet.Count)
+                    _info.StatesInMemoryAtTheSameTime = openSet.Count + closedSet.Count;
+                _info.StatesEverSelected = closedSet.Count;
+            }
+
+            return null;
+        }
+
+        private PuzzleNode IDAStarSearch(PuzzleNode parent)
+        {
+            _sw = Stopwatch.StartNew();
+            var threshold = Heuristics.GetScore(parent.State, _goalState, _heuristicType, PuzzleSize);
             PuzzleNode finalNode = null;
 
             while (true)
             {
                 _tmpMaxStates = 0;
 
-                var tmpF = SearchHelper(parent, gScore, threshold, ref finalNode);
+                var tmpF = SearchHelper(parent, 0, threshold, ref finalNode);
 
                 if (_tmpMaxStates > _info.StatesInMemoryAtTheSameTime)
                     _info.StatesInMemoryAtTheSameTime = _tmpMaxStates;
@@ -99,8 +152,8 @@ namespace N_Puzzle
         //helper method for IDA star search. returns minimum f_score encountered, such as f_score > threshold 
         private int SearchHelper(PuzzleNode node, int gScore, int threshold, ref PuzzleNode finalNode)
         {
-            var hScore = Heuristics.GetScore(node.State, _goalState, _heuristicType, _puzzleSize);
-            var fScore = gScore + hScore; 
+            var hScore = Heuristics.GetScore(node.State, _goalState, _heuristicType, PuzzleSize);
+            var fScore = gScore + hScore;
             var nextThreshold = int.MaxValue;
             
             if (_timeLimit > 0 && _sw.ElapsedMilliseconds > _timeLimit)
@@ -154,17 +207,16 @@ namespace N_Puzzle
 
             foreach (var move in _moves)
             {
-                var movedState = PuzzleNode.CreateMovedState(parent.State, move, zeroIndex, _puzzleSize);
-                var moveStateSource = PuzzleNode.GetMoveStringFromMoveValue(move, _puzzleSize);
+                var movedState = PuzzleNode.CreateMovedState(parent.State, move, zeroIndex, PuzzleSize);
+                var moveStateSource = PuzzleNode.GetMoveStringFromMoveValue(move, PuzzleSize);
 
                 if (movedState == null)
                     continue;
 
-                var movedNode = new PuzzleNode(parent, movedState, moveStateSource);
-                var hScore = Heuristics.GetScore(movedState, _goalState, _heuristicType, _puzzleSize);
-                var fScore = gScore + hScore;
+                var hScore = Heuristics.GetScore(movedState, _goalState, _heuristicType, PuzzleSize);
+                var movedNode = new PuzzleNode(parent, movedState, moveStateSource, gScore, hScore);
 
-                candidates.Enqueue(movedNode, fScore);
+                candidates.Enqueue(movedNode, movedNode.FScore);
             }
 
             return candidates;
@@ -172,7 +224,7 @@ namespace N_Puzzle
 
         private void PrintInfoIfNeeded(int gScore, int hScore)
         {
-            //print ongoing info if needed (eats performance)
+            //print ongoing solving info if needed (eats performance)
             if (!OptionsParser.PrintSolvingInfo)
                 return;
             if (_sw.ElapsedMilliseconds <= _lastInfoPrintTime + InfoPrintDelay)
@@ -184,8 +236,13 @@ namespace N_Puzzle
             Console.WriteLine($"Current depth: {gScore}");
             Console.WriteLine($"Heuristic score for last node: {hScore}");
             Console.WriteLine($"Total nodes traversed: {_info.StatesEverSelected}");
-            Console.WriteLine($"Current nodes in memory: {_tmpMaxStates}");
-            Console.WriteLine($"Maximum nodes in memory after reaching minimum f: {_info.StatesInMemoryAtTheSameTime}");
+            if (_algorithmType == AlgorithmType.IDAstar)
+            {
+                Console.WriteLine($"Current nodes in memory: {_tmpMaxStates}");
+                Console.WriteLine($"Maximum nodes in memory after reaching minimum f: {_info.StatesInMemoryAtTheSameTime}");
+            }
+            else
+                Console.WriteLine($"Current nodes in memory: {_info.StatesInMemoryAtTheSameTime}");
             Console.WriteLine($"Time elapsed: {_sw.Elapsed.Minutes}:{_sw.Elapsed.Seconds}:{_sw.Elapsed.Milliseconds}");
         }
         
@@ -194,11 +251,11 @@ namespace N_Puzzle
             if (!Regex.IsMatch(fileContent[0], @"^\d$"))
                 throw new Exception("first line of config should contain only 1 integer digit (size of puzzle).");
 
-            _puzzleSize = int.Parse(fileContent[0]);
+            PuzzleSize = int.Parse(fileContent[0]);
 
-            if (fileContent.Count - 1 != _puzzleSize)
+            if (fileContent.Count - 1 != PuzzleSize)
                 throw new Exception(
-                    $"invalid puzzle pieces lines ({fileContent.Count - 1}), while should be ({_puzzleSize}).");
+                    $"invalid puzzle pieces lines ({fileContent.Count - 1}), while should be ({PuzzleSize}).");
             for (var i = 1; i < fileContent.Count; i++)
             {
                 if (Regex.IsMatch(fileContent[i], @"[^\d\s]"))
@@ -206,20 +263,20 @@ namespace N_Puzzle
                         "puzzle config lines (except comments) should contain only positive integer digits.");
 
                 var nums = Regex.Split(fileContent[i], @"\s+");
-                if (nums.Length != _puzzleSize)
+                if (nums.Length != PuzzleSize)
                     throw new Exception(
-                        $"invalid puzzle pieces count in a row ({nums.Length}), while should be ({_puzzleSize}).");
+                        $"invalid puzzle pieces count in a row ({nums.Length}), while should be ({PuzzleSize}).");
 
                 foreach (var num in nums)
                 {
                     var tmp = int.Parse(num);
 
-                    if (_initialState.Contains(tmp))
+                    if (InitialState.Contains(tmp))
                         throw new Exception($"puzzle should not contain same pieces: {tmp}.");
-                    _initialState.Add(tmp);
+                    InitialState.Add(tmp);
                 }
             }
-            if (_initialState.IndexOf(0) == -1)
+            if (InitialState.IndexOf(0) == -1)
                 throw new Exception("puzzle should contain empty piece.");
         }
 

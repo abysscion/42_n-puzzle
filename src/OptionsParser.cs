@@ -4,15 +4,17 @@ namespace N_Puzzle
 {
     internal static class OptionsParser
     {
+        private static bool _algorithmFlagSet;
         private static bool _heuristicFlagSet;
         private static bool _goalFlagSet;
         private static bool _tFlagSet;
 
-        public static SolvedStateType GoalFlag { get; private set; }
+        public static GoalStateType GoalFlag { get; private set; }
         public static HeuristicType HeuristicFlag { get; private set; }
+        public static AlgorithmType AlgorithmFlag { get; private set; }
         public static bool PrintSolvingInfo { get; private set; }
         public static bool TableStepFlag { get; private set; }
-        public static int TimeLimitFlag { get; private set; } = 1000; //default time limit is 1sec
+        public static int TimeLimitFlag { get; private set; } = 10000; //default time limit is 10sec
 
         public static void Parse(string[] opts)
         { 
@@ -25,6 +27,8 @@ namespace N_Puzzle
                 if (CheckForHeuristicFlag(opt))
                     continue;
                 if (CheckForTimeLimitFlag(opt))
+                    continue;
+                if (CheckForAlgorithmFlag(opt))
                     continue;
 
                 switch (opt)
@@ -65,6 +69,27 @@ namespace N_Puzzle
             return true;
         }
 
+        private static bool CheckForAlgorithmFlag(string opt)
+        {
+            if (!opt.StartsWith("-algorithm:"))
+                return false;
+            
+            if (_algorithmFlagSet)
+                throw new Exception("-algorithm flag is already set.");
+            var algorithm = opt.Substring(11);
+            if (algorithm.Length < 1)
+                throw new Exception($"unknown heuristic type provided: {algorithm}");
+            if (algorithm.Equals("Astar"))
+                AlgorithmFlag = AlgorithmType.Astar;
+            else if (algorithm.Equals("IDAstar"))
+                AlgorithmFlag = AlgorithmType.IDAstar;
+            else
+                throw new Exception($"unknown algorithm type provided: {algorithm}");
+
+            _algorithmFlagSet = true;
+            return true;
+        }
+        
         private static bool CheckForHeuristicFlag(string opt)
         {
             if (!opt.StartsWith("-heuristic:"))
@@ -99,11 +124,11 @@ namespace N_Puzzle
             if (goal.Length < 1)
                 throw new Exception($"unknown goal type provided: {goal}");
             if (goal.Equals("ZeroFirst"))
-                GoalFlag = SolvedStateType.ZeroFirst;
+                GoalFlag = GoalStateType.ZeroFirst;
             else if (goal.Equals("ZeroLast"))
-                GoalFlag = SolvedStateType.ZeroLast;
+                GoalFlag = GoalStateType.ZeroLast;
             else if (goal.Equals("Snail"))
-                GoalFlag = SolvedStateType.Snail;
+                GoalFlag = GoalStateType.Snail;
             else
                 throw new Exception($"unknown goal type provided: {goal}");
 

@@ -8,7 +8,6 @@ namespace N_Puzzle
         public PuzzleNode SolvedNode;
         public PuzzleNode RootNode;
         public Stopwatch TimeThing;
-        public bool IsSolved;
         public int StatesInMemoryAtTheSameTime;
         public int StatesEverSelected;
         public int TurnsCount;

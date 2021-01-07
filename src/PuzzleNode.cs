@@ -5,22 +5,28 @@ namespace N_Puzzle
 {
     public class PuzzleNode
     {
-        public PuzzleNode Parent { get; }
         public List<int> State { get; }
-        public string MoveSource { get; }
+        public int GScore { get; }
+        public int FScore { get; }
+        public int HScore { get; }
+        private PuzzleNode Parent { get; }
+        private string MoveSource { get; }
 
-        public PuzzleNode(PuzzleNode parent, List<int> state, string moveSource)
+        public PuzzleNode(PuzzleNode parent, List<int> state, string moveSource, int gScore, int hScore)
         {
             Parent = parent;
             State = state;
             MoveSource = moveSource;
+            GScore = gScore;
+            HScore = hScore;
+            FScore = GScore + HScore;
         }
 
         public static List<int> CreateMovedState(List<int> state, int move, int zeroIndex, int puzzleSize)
         {
             if (!IsAbleToCreateMovedState(move, zeroIndex, puzzleSize, out var newTileIndex))
                 return null;
-            
+
             var tmpValue = state[newTileIndex];
             var movedState = new List<int>(puzzleSize * puzzleSize);
 
@@ -66,7 +72,7 @@ namespace N_Puzzle
             lst.Reverse();
             return lst;
         }
-        
+
         public static List<List<int>> GetStatesSequenceToNode(PuzzleNode node)
         {
             var lst = new List<List<int>>();
